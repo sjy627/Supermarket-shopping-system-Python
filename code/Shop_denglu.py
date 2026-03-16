@@ -3,6 +3,10 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from Shop_main import *
+from config import IMG_DENGLO, FILE_ID, FILE_PASSWORD
+from utils import hash_password, verify_password, show_message, read_accounts, save_account
+
+
 class denglu(QWidget):
     """
     登录窗口 ：程序的入口
@@ -18,25 +22,25 @@ class denglu(QWidget):
     def __init__(self):
         super(denglu, self).__init__()
         self.resize(400, 247)
-        #登录窗口无边界
         self.setWindowFlags(Qt.FramelessWindowHint)
-        #登录窗口透明
         self.setAttribute(Qt.WA_TranslucentBackground, True)
-        #定义多个空label
+        self.initUI()
+        
+    def initUI(self):
         self.label_null1 = QLabel()
         self.label_null2 = QLabel()
         self.label_null3 = QLabel()
         self.label_null4 = QLabel()
         self.label_new = QLabel()
-        #定义创建新账户标签并设置信号槽绑定事件
+        
         self.label_new.setText("<a href='#'>注册新用户</a>")
         self.label_new.setStyleSheet('''color: rgb(253,129,53);''')
         self.label_new.linkActivated.connect(self.idnew)
-        #设置隐藏密码RadioButton
+        
         self.btn_check = QRadioButton("显示密码")
-        self.btn_check.setStyleSheet('''color: rgb(253,129,53);;''')
+        self.btn_check.setStyleSheet('''color: rgb(253,129,53);''')
         self.btn_check.clicked.connect(self.yanma)
-        #登录与退出按钮，设置按钮颜色及事件绑定
+        
         self.btn_denglu = QPushButton("登录")
         self.btn_quxiao = QPushButton("退出")
         self.btn_denglu.setStyleSheet('''color: white;
@@ -45,13 +49,13 @@ class denglu(QWidget):
                         background-color: rgb(218,181,150);''')
         self.btn_denglu.clicked.connect(self.check)
         self.btn_quxiao.clicked.connect(self.quxiao)
-        #账号和密码
+        
         self.lineedit_id = QLineEdit()
         self.lineedit_id.setPlaceholderText("账号")
         self.lineedit_password = QLineEdit()
         self.lineedit_password.setEchoMode(QLineEdit.Password)
         self.lineedit_password.setPlaceholderText("密码")
-        #布局设置
+        
         layout = QHBoxLayout(self)
         wid_denglu_right = QWidget()
         wid_denglu_left = QLabel()
@@ -65,47 +69,45 @@ class denglu(QWidget):
         g.addWidget(self.label_null2, 6, 1)
         g.addWidget(self.label_null3, 7, 1)
         g.addWidget(self.label_null4, 8, 1)
-        g.addWidget(self.label_new, 9, 2 )
+        g.addWidget(self.label_new, 9, 2)
         wid_denglu_right.setLayout(g)
         layout.addWidget(wid_denglu_left)
         layout.addWidget(wid_denglu_right)
         self.setLayout(layout)
-    #密码隐藏
+        
     def yanma(self):
         if self.btn_check.isChecked():
             self.lineedit_password.setEchoMode(QLineEdit.Normal)
         else:
             self.lineedit_password.setEchoMode(QLineEdit.Password)
-    #登录时核查账号及密码是否正确
+            
     def check(self):
-        temp = False
-        self.id_password = {}
-        id = open("账号.txt")
-        password = open("密码.txt")
-        i = 0
-        for line1 in id:
-            m = i+1
-            for line2 in password:
-                i = i+1
-                if i == m:
-                    self.id_password[line1]=line2
-                    break
-                if i < m:
-                    continue
-                    #如果输入账号不在账号表文件中，则推送消息框提醒
-        if self.lineedit_id.text()+"\n" not in self.id_password:
-            replay = QMessageBox.warning(self, "!", "账号或密码输入错误", QMessageBox.Yes)
-        else:
-            if self.id_password[self.lineedit_id.text()+"\n"] == self.lineedit_password.text()+"\n":
-                #账号密码验证成功，创建主界面，进入信息管理程序,并关闭登录窗口
+        try:
+            username = self.lineedit_id.text().strip()
+            password = self.lineedit_password.text()
+            
+            if not username or not password:
+                show_message(self, "提示", "账号和密码不能为空", "warning")
+                return
+            
+            accounts = read_accounts(FILE_ID, FILE_PASSWORD)
+            
+            if username not in accounts:
+                show_message(self, "提示", "账号或密码输入错误", "warning")
+                return
+            
+            stored_hash = accounts[username]
+            if verify_password(stored_hash, password):
+                show_message(self, "成功", "登录成功！", "information")
                 self.shop = Shopmain()
                 self.shop.show()
                 self.close()
             else:
-                replay = QMessageBox.warning(self, "!", "账号或密码输入错误", QMessageBox.Yes)
-        id.close()
-        password.close()
-        #创建新的账号
+                show_message(self, "提示", "账号或密码输入错误", "warning")
+                
+        except Exception as e:
+            show_message(self, "错误", f"登录失败：{str(e)}", "critical")
+            
     def idnew(self):
         self.label_idnew_id = QLabel("账号")
         self.label_idnew_password = QLabel("密码")
@@ -115,7 +117,7 @@ class denglu(QWidget):
         self.btn_idnew_quren.clicked.connect(self.idnewqueren)
         self.btn_idnew_quxiao = QPushButton("取消")
         self.btn_idnew_quxiao.clicked.connect(self.idnewclose)
-        self.idnew = QWidget()
+        self.idnew_window = QWidget()
         layout_idnew = QGridLayout()
         layout_idnew.addWidget(self.label_idnew_id, 1, 0)
         layout_idnew.addWidget(self.label_idnew_password, 2, 0)
@@ -123,59 +125,59 @@ class denglu(QWidget):
         layout_idnew.addWidget(self.lineedit_idnew_password, 2, 1, 1, 2)
         layout_idnew.addWidget(self.btn_idnew_quren, 3, 1)
         layout_idnew.addWidget(self.btn_idnew_quxiao, 3, 2)
-        self.idnew.setLayout(layout_idnew)
-        self.idnew.move(self.pos())
-        self.idnew.resize(200, 133)
-        self.idnew.setWindowFlags(Qt.FramelessWindowHint)
-        self.paintEvent(self)
-        self.idnew.setStyleSheet("background-color :rgb(253,216,174)")
-        self.idnew.show()
-        #新账号注册的确认
+        self.idnew_window.setLayout(layout_idnew)
+        self.idnew_window.move(self.pos())
+        self.idnew_window.resize(200, 133)
+        self.idnew_window.setWindowFlags(Qt.FramelessWindowHint)
+        self.idnew_window.setStyleSheet("background-color :rgb(253,216,174)")
+        self.idnew_window.show()
+        
     def idnewqueren(self):
-        id = open("账号.txt", "r+")
-        password = open("密码.txt", "r+")
-        self.id_password = {}
-        i = 0
-        for line1 in id:
-            m = i+1
-            for line2 in password:
-                i = i+1
-                if i == m:
-                    self.id_password[line1]=line2
-                    break
-                if i < m:
-                    continue
-        if  self.lineedit_idnew_id.text() == "":
-            replay = QMessageBox.warning(self, "!", "账号不准为空", QMessageBox.Yes)
-        else:
-            if self.lineedit_idnew_id.text()+"\n" in self.id_password:
-                replay = QMessageBox.warning(self, "!", "账号已存在", QMessageBox.Yes)
+        try:
+            username = self.lineedit_idnew_id.text().strip()
+            password = self.lineedit_idnew_password.text()
+            
+            if not username:
+                show_message(self, "提示", "账号不能为空", "warning")
+                return
+            
+            accounts = read_accounts(FILE_ID, FILE_PASSWORD)
+            if username in accounts:
+                show_message(self, "提示", "账号已存在", "warning")
+                return
+            
+            if not password:
+                show_message(self, "提示", "密码不能为空", "warning")
+                return
+            
+            password_hash = hash_password(password)
+            if save_account(FILE_ID, FILE_PASSWORD, username, password_hash):
+                show_message(self, "成功", "注册成功！", "information")
+                self.idnew_window.close()
             else:
-                if self.lineedit_idnew_password.text() == "":
-                    replay = QMessageBox.warning(self, "!", "密码不准为空", QMessageBox.Yes)
-                else:
-                    id.write(self.lineedit_idnew_id.text()+"\n")
-                    password.write(self.lineedit_idnew_password.text()+"\n")
-                    replay = QMessageBox.warning(self, "!", "注册成功！", QMessageBox.Yes)
-                    self.idnew.close()
-        id.close()
-        password.close()
-    #添加背景图片
+                show_message(self, "错误", "注册失败，请重试", "critical")
+                
+        except Exception as e:
+            show_message(self, "错误", f"注册失败：{str(e)}", "critical")
+            
     def paintEvent(self, event):
         painter = QPainter(self)
-        pixmap = QPixmap("denglu.jpg")
-        painter.drawPixmap(self.rect(), pixmap)
-    #关闭创新账号窗口
+        try:
+            pixmap = QPixmap(IMG_DENGLO)
+            if not pixmap.isNull():
+                painter.drawPixmap(self.rect(), pixmap)
+        except Exception as e:
+            print(f"加载背景图片失败: {e}")
+            
     def idnewclose(self):
-        self.idnew.close()
-    #取消创建新账号，并退出创建窗口
+        self.idnew_window.close()
+        
     def quxiao(self):
         sys.exit()
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     d = denglu()
     d.show()
     sys.exit(app.exec())
-        
-        
-        

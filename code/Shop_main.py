@@ -5,6 +5,7 @@ from PyQt5.QtCore import *
 from Shop_stock import *
 from Shop_sell import *
 from Shop_select import *
+from config import IMG_MAIN
 class Shopmain(QWidget):
     """
     成功登录后的主窗口：Shop_main
@@ -82,8 +83,12 @@ class Shopmain(QWidget):
     #设置背景图片
     def paintEvent(self, event):
         painter = QPainter(self)
-        pixmap = QPixmap("main.jpg")
-        painter.drawPixmap(self.rect(), pixmap)
+        try:
+            pixmap = QPixmap(IMG_MAIN)
+            if not pixmap.isNull():
+                painter.drawPixmap(self.rect(), pixmap)
+        except Exception as e:
+            print(f"加载背景图片失败: {e}")
 if __name__ == "__main__":
     app =QApplication(sys.argv)
     shop = Shopmain()
